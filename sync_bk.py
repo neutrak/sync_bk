@@ -23,10 +23,14 @@ def sync_cp_file(f,from_path,to_path):
 			shutil.copytree(from_path+'/'+f['path'],to_path+'/'+f['path'])
 		else:
 			os.makedirs(to_path+'/'+f['path'])
+			for filename in os.listdir(from_path+'/'+f['path']):
+				if(not os.path.isdir(from_path+'/'+f['path']+'/'+filename)):
+					shutil.copyfile(from_path+'/'+f['path']+'/'+filename,to_path+'/'+f['path']+'/'+filename)
 	elif(f['type']=='file'):
 		dir_ancestry=(f['path'].split('/'))
 		directory='/'.join(dir_ancestry[0:len(dir_ancestry)-1])
-		os.makedirs(to_path+'/'+directory)
+		if(not os.path.exists(to_path+'/'+directory)):
+			os.makedirs(to_path+'/'+directory)
 		
 		shutil.copyfile(from_path+'/'+f['path'],to_path+'/'+f['path'])
 	else:
@@ -71,6 +75,14 @@ def mk_bk(manifest,output_file):
 
 #synchronize from a backup
 def sync_bk(sync_file,sync_dir):
+	#TODO: open sync_file, for each file in it,
+	#	if the destination file doesn't already exist
+	#		copy it to the appropriate destination
+	#	if the destination file does exist
+	#		check if there are differences using 'diff'
+	#		if so, prompt the user to resolve the differences
+	#		else just skip it (no differences)
+	
 	pass
 
 if(__name__=='__main__'):
