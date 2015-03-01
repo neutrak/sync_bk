@@ -20,6 +20,7 @@ import optparse
 
 #the manifest name (within the backup archive)
 MANIFEST_NAME='sync_manifest.json'
+SYNC_SUBDIR='sync_bk'
 
 def sync_cp_file(f,from_path,to_path):
 	if(f['type']=='dir'):
@@ -78,7 +79,7 @@ def mk_bk(manifest,output_file,sync_dir):
 	if(start_path is None):
 		start_path=os_environ['HOME']
 	
-	sync_path=sync_dir+'/sync_bk'
+	sync_path=sync_dir+'/'+SYNC_SUBDIR
 	os.mkdir(sync_path)
 	
 	for f in json_tree['files']:
@@ -93,9 +94,9 @@ def mk_bk(manifest,output_file,sync_dir):
 	manifest_basename=MANIFEST_NAME
 	
 	shutil.copyfile(manifest,sync_path+'/../'+manifest_basename)
-	os.system('tar cvzf '+output_file+' '+manifest_basename+' sync_bk/')
-	print('removing '+os.getcwd()+'/sync_bk/ '+manifest_basename)
-	os.system('rm -rf sync_bk/ '+manifest_basename)
+	os.system('tar cvzf '+output_file+' '+manifest_basename+' '+SYNC_SUBDIR+'/')
+	print('removing '+os.getcwd()+'/'+SYNC_SUBDIR+'/ '+manifest_basename)
+	os.system('rm -rf '+SYNC_SUBDIR+'/ '+manifest_basename)
 
 def resolv_bk(from_file,to_file):
 	print('Changes were found to the following file: '+to_file)
@@ -114,12 +115,25 @@ def resolv_bk(from_file,to_file):
 	option=(input().lower())[0]
 	print('Got option '+str(option))
 
+#get all files (recursive os.listdir)
+def full_file_list(start_path):
+#	print('full_file_list debug; start_path='+start_path)
+	
+	acc=[]
+	for f in os.listdir(start_path):
+		fpath=start_path+'/'+f
+		if(os.path.isdir(fpath)):
+			acc.extend(full_file_list(fpath))
+		else:
+			acc.append(fpath)
+	return acc
+
 #synchronize from a backup
 def sync_bk(sync_file,sync_dir):
 	#save the directory this script was run from
 	run_dir=os.getcwd()
 	
-	sync_path=sync_dir+'/sync_bk'
+	sync_path=sync_dir+'/'+SYNC_SUBDIR
 	os.mkdir(sync_path)
 	print(os.getcwd()+'$ tar xvzf -C \''+sync_path+'\' '+sync_file)
 	os.system('tar -C \''+sync_path+'\' -xvzf '+sync_file)
@@ -150,13 +164,21 @@ def sync_bk(sync_file,sync_dir):
 		start_path=os_environ['HOME']
 	
 	print('start_path is '+start_path)
-	for f in json_tree['files']:
-		if(os.path.isfile(start_path+f['path'])):
-			print('file '+start_path+f['path']+' already exists')
-			#TODO: resolve conflicts in this case
-		#TODO: handle directories
 	
-	#TODO: open sync_file, for each file in it,
+	arc_files=full_file_list(sync_path+'/'+SYNC_SUBDIR)
+	for idx in range(0,len(arc_files)):
+		arc_files[idx]=arc_files[idx][len(sync_path)+len('/'):]
+		src=arc_files[idx]
+		dest=start_path+arc_files[idx][len(SYNC_SUBDIR):]
+		print('got archived file at path     ./'+src)
+		print('possible destination          '+dest)
+		
+		#TODO: resolve conflicts in this case
+	#	if the destination file does exist
+	#		check if there are differences using 'diff'
+	#		if so, prompt the user to resolve the differences
+	#		else just skip it (no differences)
+	
 	#	if the destination file doesn't already exist
 	#		look for a file with the same name
 	#			if a file with the same name is found
@@ -164,10 +186,6 @@ def sync_bk(sync_file,sync_dir):
 	#				if there are no differences, prompt to move local file
 	#				if there are differences, prompt for directory and what to do
 	#		copy it to the appropriate destination
-	#	if the destination file does exist
-	#		check if there are differences using 'diff'
-	#		if so, prompt the user to resolve the differences
-	#		else just skip it (no differences)
 	
 	#clean up backup dir
 	os.chdir(run_dir)
