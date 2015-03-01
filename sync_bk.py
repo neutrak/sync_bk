@@ -95,7 +95,7 @@ def mk_bk(manifest,output_file,sync_dir):
 	manifest_basename=MANIFEST_NAME
 	
 	shutil.copyfile(manifest,sync_path+'/../'+manifest_basename)
-	os.system('tar cvzf '+output_file+' '+manifest_basename+' '+SYNC_SUBDIR+'/')
+	os.system('tar czf '+output_file+' '+manifest_basename+' '+SYNC_SUBDIR+'/')
 	print('removing '+os.getcwd()+'/'+SYNC_SUBDIR+'/ '+manifest_basename)
 	os.system('rm -rf '+SYNC_SUBDIR+'/ '+manifest_basename)
 
@@ -181,8 +181,8 @@ def sync_bk(sync_file,sync_dir):
 			os.system('rm -rf '+sync_path)
 			os.mkdir(sync_path)
 	
-	print(os.getcwd()+'$ tar xvzf -C \''+sync_path+'\' '+sync_file)
-	os.system('tar -C \''+sync_path+'\' -xvzf '+sync_file)
+	print(os.getcwd()+'$ tar xzf -C \''+sync_path+'\' '+sync_file)
+	os.system('tar -C \''+sync_path+'\' -xzf '+sync_file)
 	
 	files=os.listdir(sync_path)
 #	print('files (manifest+) are '+str(files))
