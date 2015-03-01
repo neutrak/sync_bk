@@ -18,6 +18,9 @@ import json
 #command-line arguments are handled with an option parser
 import optparse
 
+#the manifest name (within the backup archive)
+MANIFEST_NAME='sync_manifest.json'
+
 def sync_cp_file(f,from_path,to_path):
 	if(f['type']=='dir'):
 		if(f['recurse']==True):
@@ -39,11 +42,21 @@ def sync_cp_file(f,from_path,to_path):
 		print('Warn: Unrecognized file type for '+str(f)+'; skipping...')
 
 #make a backup
-def mk_bk(manifest,output_file):
+def mk_bk(manifest,output_file,sync_dir):
 	#if the manifest file doesn't exist, then exit now!
 	if(not os.path.isfile(manifest)):
 		print('Err: Manifest file could not be opened (probably missing!), exiting...')
 		exit(1)
+	
+	#save the directory this script was run from
+	#this is in case the given manifest was in a relative path
+	run_dir=os.getcwd()
+	
+	#convert any relative paths into absolute paths
+	if(not manifest.startswith('/')):
+		manifest=run_dir+'/'+manifest
+	if(not output_file.startswith('/')):
+		output_file=run_dir+'/'+output_file
 	
 	fp=open(manifest,'r')
 	fcontent=fp.read()
@@ -65,16 +78,23 @@ def mk_bk(manifest,output_file):
 	if(start_path is None):
 		start_path=os_environ['HOME']
 	
-	sync_path=tempfile.gettempdir()+'/sync_bk'
+	sync_path=sync_dir+'/sync_bk'
 	os.mkdir(sync_path)
 	
 	for f in json_tree['files']:
 		sync_cp_file(f,start_path,sync_path)
 	
 	os.chdir(sync_path+'/..')
-	manifest_basename=os.path.basename(manifest)
+	
+#	manifest_basename=os.path.basename(manifest)
+	
+	#enforce naming convention for manifest post-copy
+	#because we need to know what to look for when extracting
+	manifest_basename=MANIFEST_NAME
+	
 	shutil.copyfile(manifest,sync_path+'/../'+manifest_basename)
 	os.system('tar cvzf '+output_file+' '+manifest_basename+' sync_bk/')
+	print('removing '+os.getcwd()+'/sync_bk/ '+manifest_basename)
 	os.system('rm -rf sync_bk/ '+manifest_basename)
 
 def resolv_bk(from_file,to_file):
@@ -96,6 +116,46 @@ def resolv_bk(from_file,to_file):
 
 #synchronize from a backup
 def sync_bk(sync_file,sync_dir):
+	#save the directory this script was run from
+	run_dir=os.getcwd()
+	
+	sync_path=sync_dir+'/sync_bk'
+	os.mkdir(sync_path)
+	print(os.getcwd()+'$ tar xvzf -C \''+sync_path+'\' '+sync_file)
+	os.system('tar -C \''+sync_path+'\' -xvzf '+sync_file)
+	
+	files=os.listdir(sync_path)
+	print('files (manifest+) are '+str(files))
+	
+	#after extracting, go to where the files were extracted
+	os.chdir(sync_path)
+	
+	#if the manifest file doesn't exist, then exit now!
+	if(not os.path.isfile(MANIFEST_NAME)):
+		print('Err: Manifest file missing; this is NOT a valid archive; exiting...')
+		exit(1)
+	
+	fp=open(MANIFEST_NAME,'r')
+	fcontent=fp.read()
+	fp.close()
+	
+	try:
+		json_tree=json.loads(fcontent)
+	except ValueError:
+		print('Err: Could not parse manifest file, exiting...')
+		exit(1)
+	
+	start_path=json_tree['start_path']
+	if(start_path is None):
+		start_path=os_environ['HOME']
+	
+	print('start_path is '+start_path)
+	for f in json_tree['files']:
+		if(os.path.isfile(start_path+f['path'])):
+			print('file '+start_path+f['path']+' already exists')
+			#TODO: resolve conflicts in this case
+		#TODO: handle directories
+	
 	#TODO: open sync_file, for each file in it,
 	#	if the destination file doesn't already exist
 	#		look for a file with the same name
@@ -109,6 +169,16 @@ def sync_bk(sync_file,sync_dir):
 	#		if so, prompt the user to resolve the differences
 	#		else just skip it (no differences)
 	
+	#clean up backup dir
+	os.chdir(run_dir)
+	print('removing '+sync_path)
+	os.system('rm -rf '+sync_path)
+	
+	pass
+
+#TODO: write this
+#difference a two backup files by using tar tvf and diff
+def diff_bk():
 	pass
 
 if(__name__=='__main__'):
@@ -131,7 +201,7 @@ if(__name__=='__main__'):
 		sync_bk(sync_file,sync_dir)
 	else:
 		print('Creating a backup using manifest file '+str(manifest)+'; storing output in '+str(sync_file))
-		mk_bk(manifest,sync_file)
+		mk_bk(manifest,sync_file,sync_dir)
 	
 	
 
