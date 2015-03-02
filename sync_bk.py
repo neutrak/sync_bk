@@ -102,8 +102,11 @@ def mk_bk(manifest,output_file,sync_dir):
 def resolve_bk(src,dest):
 	got_opt=False
 	
+	src_info=os.stat(src)
+	dest_info=os.stat(dest)
+	
 	while(not got_opt):
-		print('Changes were found to the following file: '+dest)
+		print('Changes were found to the following file: '+dest+' (last modified on filesystem '+str(dest_info.st_mtime)+')')
 		print('Would you like to keep the ')
 		print("\t"+'[n]ewest')
 		print("\t"+'[o]ldest')
@@ -122,15 +125,23 @@ def resolve_bk(src,dest):
 		#TODO: do what the option asked
 		if(option=='n'):
 			#keep newest
+			#is mtime correct for when file was added to archive!??
 			got_opt=True
 		elif(option=='o'):
 			#keep oldest
+			#is mtime correct for when file was added to archive!??
 			got_opt=True
 		elif(option=='l'):
 			#keep largest
+			if(src_info.st_size>dest_info.st_size):
+				#copy from source (archive) to destination
+				pass
 			got_opt=True
 		elif(option=='s'):
 			#keep smallest
+			if(src_info.st_size<dest_info.st_size):
+				#copy from source (archive) to destination
+				pass
 			got_opt=True
 		elif(option=='a'):
 			#keep archived copy (copy source to dest)
