@@ -12,6 +12,7 @@ import subprocess
 #general libraries
 import tempfile
 import time
+import datetime
 
 #the manifest file is json
 import json
@@ -22,6 +23,9 @@ import optparse
 #the manifest name (within the backup archive)
 MANIFEST_NAME='sync_manifest.json'
 SYNC_SUBDIR='sync_bk'
+
+def unix_ts_to_str(ts):
+	return datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
 def sync_cp_file(f,from_path,to_path):
 	if(f['type']=='dir'):
@@ -106,7 +110,9 @@ def resolve_bk(src,dest):
 	dest_info=os.stat(dest)
 	
 	while(not got_opt):
-		print('Changes were found to the following file: '+dest+' (last modified on filesystem '+str(dest_info.st_mtime)+')')
+		print('Changes were found to the following file: '+dest)
+		print('archive copy last modified time is '+unix_ts_to_str(src_info.st_mtime))
+		print('filesystem copy last modified time is '+unix_ts_to_str(dest_info.st_mtime))
 		print('Would you like to keep the ')
 		print("\t"+'[n]ewest')
 		print("\t"+'[o]ldest')
@@ -117,6 +123,7 @@ def resolve_bk(src,dest):
 		print('or would you like to ')
 		print("\t"+'view [d]iff')
 		print("\t"+'[m]erge')
+		print("\t"+'s[k]ip')
 		print("?")
 		
 		option=(input().lower())[0]
@@ -154,6 +161,9 @@ def resolve_bk(src,dest):
 			got_opt=True
 		elif(option=='m'):
 			#merge
+			got_opt=True
+		elif(option=='k'):
+			#skip
 			got_opt=True
 		else:
 			print('Unrecognized option, try again')
