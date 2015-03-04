@@ -27,6 +27,16 @@ SYNC_SUBDIR='sync_bk'
 def unix_ts_to_str(ts):
 	return datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
+def cp_file(from_path,to_path,preserve_time=True):
+	if(preserve_time):
+		shutil.copyfile(from_path,to_path)
+	else:
+		from_path=from_path.replace('\'','\\\'')
+		from_path=from_path.replace(' ','\\ ')
+		to_path=to_path.replace('\'','\\\'')
+		to_path=to_path.replace(' ','\\ ')
+		os.system('cp -v -p '+from_path+' '+to_path)
+
 def sync_cp_file(f,from_path,to_path):
 	if(f['type']=='dir'):
 		if(f['recurse']==True):
@@ -36,16 +46,14 @@ def sync_cp_file(f,from_path,to_path):
 			os.makedirs(to_path+'/'+f['path'])
 			for filename in os.listdir(from_path+'/'+f['path']):
 				if(not os.path.isdir(from_path+'/'+f['path']+'/'+filename)):
-#					shutil.copyfile(from_path+'/'+f['path']+'/'+filename,to_path+'/'+f['path']+'/'+filename)
-					os.system('cp -v -p '+from_path+'/'+f['path']+'/'+filename+' '+to_path+'/'+f['path']+'/'+filename)
+					cp_file(from_path+'/'+f['path']+'/'+filename,to_path+'/'+f['path']+'/'+filename)
 	elif(f['type']=='file'):
 		dir_ancestry=(f['path'].split('/'))
 		directory='/'.join(dir_ancestry[0:len(dir_ancestry)-1])
 		if(not os.path.exists(to_path+'/'+directory)):
 			os.makedirs(to_path+'/'+directory)
 		
-#		shutil.copyfile(from_path+'/'+f['path'],to_path+'/'+f['path'])
-		os.system('cp -v -p '+from_path+'/'+f['path']+' '+to_path+'/'+f['path'])
+		cp_file(from_path+'/'+f['path'],to_path+'/'+f['path'])
 	else:
 		print('Warn: Unrecognized file type for '+str(f)+'; skipping...')
 
@@ -136,32 +144,32 @@ def resolve_bk(src,dest):
 			#keep newest
 			print('keeping newest')
 			if(src_info.st_mtime>dest_info.st_mtime):
-				shutil.copyfile(src,dest)
+				cp_file(src,dest)
 			got_opt=True
 		elif(option=='o'):
 			#keep oldest
 			print('keeping oldest')
 			if(src_info.st_mtime<dest_info.st_mtime):
-				shutil.copyfile(src,dest)
+				cp_file(src,dest)
 			got_opt=True
 		elif(option=='l'):
 			#keep largest
 			print('keeping largest')
 			if(src_info.st_size>dest_info.st_size):
 				#copy from source (archive) to destination
-				shutil.copyfile(src,dest)
+				cp_file(src,dest)
 			got_opt=True
 		elif(option=='s'):
 			#keep smallest
 			print('keeping smallest')
 			if(src_info.st_size<dest_info.st_size):
 				#copy from source (archive) to destination
-				shutil.copyfile(src,dest)
+				cp_file(src,dest)
 			got_opt=True
 		elif(option=='a'):
 			#keep archived copy (copy source to dest)
 			print('keeping archived copy')
-			shutil.copyfile(src,dest)
+			cp_file(src,dest)
 			got_opt=True
 		elif(option=='f'):
 			#keep filesystem copy (do nothing)
