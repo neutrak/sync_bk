@@ -36,14 +36,16 @@ def sync_cp_file(f,from_path,to_path):
 			os.makedirs(to_path+'/'+f['path'])
 			for filename in os.listdir(from_path+'/'+f['path']):
 				if(not os.path.isdir(from_path+'/'+f['path']+'/'+filename)):
-					shutil.copyfile(from_path+'/'+f['path']+'/'+filename,to_path+'/'+f['path']+'/'+filename)
+#					shutil.copyfile(from_path+'/'+f['path']+'/'+filename,to_path+'/'+f['path']+'/'+filename)
+					os.system('cp -v -p '+from_path+'/'+f['path']+'/'+filename+' '+to_path+'/'+f['path']+'/'+filename)
 	elif(f['type']=='file'):
 		dir_ancestry=(f['path'].split('/'))
 		directory='/'.join(dir_ancestry[0:len(dir_ancestry)-1])
 		if(not os.path.exists(to_path+'/'+directory)):
 			os.makedirs(to_path+'/'+directory)
 		
-		shutil.copyfile(from_path+'/'+f['path'],to_path+'/'+f['path'])
+#		shutil.copyfile(from_path+'/'+f['path'],to_path+'/'+f['path'])
+		os.system('cp -v -p '+from_path+'/'+f['path']+' '+to_path+'/'+f['path'])
 	else:
 		print('Warn: Unrecognized file type for '+str(f)+'; skipping...')
 
@@ -129,41 +131,53 @@ def resolve_bk(src,dest):
 		option=(input().lower())[0]
 		print('Got option '+str(option))
 		
-		#TODO: do what the option asked
+		#do what the option asked
 		if(option=='n'):
 			#keep newest
-			#is mtime correct for when file was added to archive!??
+			print('keeping newest')
+			if(src_info.st_mtime>dest_info.st_mtime):
+				shutil.copyfile(src,dest)
 			got_opt=True
 		elif(option=='o'):
 			#keep oldest
-			#is mtime correct for when file was added to archive!??
+			print('keeping oldest')
+			if(src_info.st_mtime<dest_info.st_mtime):
+				shutil.copyfile(src,dest)
 			got_opt=True
 		elif(option=='l'):
 			#keep largest
+			print('keeping largest')
 			if(src_info.st_size>dest_info.st_size):
 				#copy from source (archive) to destination
-				pass
+				shutil.copyfile(src,dest)
 			got_opt=True
 		elif(option=='s'):
 			#keep smallest
+			print('keeping smallest')
 			if(src_info.st_size<dest_info.st_size):
 				#copy from source (archive) to destination
-				pass
+				shutil.copyfile(src,dest)
 			got_opt=True
 		elif(option=='a'):
 			#keep archived copy (copy source to dest)
+			print('keeping archived copy')
+			shutil.copyfile(src,dest)
 			got_opt=True
 		elif(option=='f'):
 			#keep filesystem copy (do nothing)
+			print('keeping filesystem copy')
 			got_opt=True
 		elif(option=='d'):
 			#view diff
+			#TODO
 			got_opt=True
 		elif(option=='m'):
 			#merge
+			#TODO
 			got_opt=True
 		elif(option=='k'):
 			#skip
+			print('skipping file')
 			got_opt=True
 		else:
 			print('Unrecognized option, try again')
