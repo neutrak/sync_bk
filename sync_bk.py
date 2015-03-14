@@ -57,6 +57,26 @@ def sync_cp_file(f,from_path,to_path):
 	else:
 		print('Warn: Unrecognized file type for '+str(f)+'; skipping...')
 
+def sync_add_file(f,output_arc):
+	if(f['type']=='dir'):
+		if(f['recurse']==True):
+			#copy all files in the directory, etc.
+			cmd='tar uvf '+output_arc+' --transform \'s%^%sync_bk/%\' '+f['path']
+			print(cmd)
+			os.system(cmd)
+		else:
+			for filename in os.listdir(f['path']):
+				if(not os.path.isdir(os.path.join(f['path'],filename))):
+					cmd='tar uvf '+output_arc+' --transform \'s%^%sync_bk/%\' '+os.path.join(f['path'],filename)
+					print(cmd)
+					os.system(cmd)
+	elif(f['type']=='file'):
+		cmd='tar uvf '+output_arc+' --transform \'s%^%sync_bk/%\' '+f['path']
+		print(cmd)
+		os.system(cmd)
+	else:
+		print('Warn: Unrecognized file type for '+str(f)+'; skipping...')
+
 #make a backup
 def mk_bk(manifest,output_file,sync_dir):
 	#if the manifest file doesn't exist, then exit now!
@@ -95,10 +115,27 @@ def mk_bk(manifest,output_file,sync_dir):
 		start_path=os_environ['HOME']
 	
 	sync_path=os.path.join(sync_dir,SYNC_SUBDIR)
-	os.mkdir(sync_path)
+	try:
+		os.mkdir(sync_path)
+	except FileExistsError:
+		print('Warn: '+sync_path+' already exists; this script might have exited prematurely; remove directory? (y/n)')
+		option=(input().lower())[0]
+		print('Got option '+str(option))
+		if(option=='y'):
+			os.system('rm -rf '+sync_path)
+			os.mkdir(sync_path)
+		else:
+			print('Err: couldn\'t create sync directory; exiting...')
+			exit(1)
 	
+	output_tar=output_file
+	if(output_tar.endswith('.gz')):
+		output_tar=output_tar[0:len(output_tar)-len('.gz')]
+	
+	os.chdir(start_path)
 	for f in json_tree['files']:
-		sync_cp_file(f,start_path,sync_path)
+#		sync_cp_file(f,start_path,sync_path)
+		sync_add_file(f,output_tar)
 	
 	os.chdir(os.path.join(sync_path,'..'))
 	
@@ -110,6 +147,15 @@ def mk_bk(manifest,output_file,sync_dir):
 	
 	shutil.copyfile(manifest,os.path.join(sync_path,'..',manifest_basename))
 	os.system('tar czf '+output_file+' '+manifest_basename+' '+SYNC_SUBDIR+os.sep)
+	
+	cmd='tar uvf '+output_tar+' --transform \'s%^%%\' '+manifest_basename
+	print(cmd)
+	os.system(cmd)
+	
+	cmd='gzip '+output_tar
+	print(cmd)
+	os.system(cmd)
+	
 	print('removing '+os.path.join(os.getcwd(),SYNC_SUBDIR+'')+' '+manifest_basename)
 	os.system('rm -rf '+os.path.join(SYNC_SUBDIR,'')+' '+manifest_basename)
 
