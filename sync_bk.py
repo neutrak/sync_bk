@@ -29,31 +29,31 @@ def unix_ts_to_str(ts):
 
 def cp_file(from_path,to_path,preserve_time=True):
 	if(preserve_time):
-		shutil.copyfile(from_path,to_path)
-	else:
 		from_path=from_path.replace('\'','\\\'')
 		from_path=from_path.replace(' ','\\ ')
 		to_path=to_path.replace('\'','\\\'')
 		to_path=to_path.replace(' ','\\ ')
 		os.system('cp -v -p '+from_path+' '+to_path)
+	else:
+		shutil.copyfile(from_path,to_path)
 
 def sync_cp_file(f,from_path,to_path):
 	if(f['type']=='dir'):
 		if(f['recurse']==True):
 			#copy all files in the directory, etc.
-			shutil.copytree(from_path+'/'+f['path'],to_path+'/'+f['path'])
+			shutil.copytree(os.path.join(from_path,f['path']),os.path.join(to_path,f['path']))
 		else:
-			os.makedirs(to_path+'/'+f['path'])
-			for filename in os.listdir(from_path+'/'+f['path']):
-				if(not os.path.isdir(from_path+'/'+f['path']+'/'+filename)):
-					cp_file(from_path+'/'+f['path']+'/'+filename,to_path+'/'+f['path']+'/'+filename)
+			os.makedirs(os.path.join(to_path,f['path']))
+			for filename in os.listdir(os.path.join(from_path,f['path'])):
+				if(not os.path.isdir(os.path.join(from_path,f['path'],filename))):
+					cp_file(os.path.join(from_path,f['path'],filename),os.path.join(to_path,f['path'],filename))
 	elif(f['type']=='file'):
-		dir_ancestry=(f['path'].split('/'))
-		directory='/'.join(dir_ancestry[0:len(dir_ancestry)-1])
-		if(not os.path.exists(to_path+'/'+directory)):
-			os.makedirs(to_path+'/'+directory)
+		dir_ancestry=(f['path'].split(os.sep))
+		directory=os.sep.join(dir_ancestry[0:len(dir_ancestry)-1])
+		if(not os.path.exists(os.path.join(to_path,directory))):
+			os.makedirs(os.path.join(to_path,directory))
 		
-		cp_file(from_path+'/'+f['path'],to_path+'/'+f['path'])
+		cp_file(os.path.join(from_path,f['path']),os.path.join(to_path,f['path']))
 	else:
 		print('Warn: Unrecognized file type for '+str(f)+'; skipping...')
 
@@ -69,10 +69,10 @@ def mk_bk(manifest,output_file,sync_dir):
 	run_dir=os.getcwd()
 	
 	#convert any relative paths into absolute paths
-	if(not manifest.startswith('/')):
-		manifest=run_dir+'/'+manifest
-	if(not output_file.startswith('/')):
-		output_file=run_dir+'/'+output_file
+	if(not manifest.startswith(os.sep)):
+		manifest=os.path.join(run_dir,manifest)
+	if(not output_file.startswith(os.sep)):
+		output_file=os.path.join(run_dir,output_file)
 	
 	fp=open(manifest,'r')
 	fcontent=fp.read()
@@ -94,13 +94,13 @@ def mk_bk(manifest,output_file,sync_dir):
 	if(start_path is None):
 		start_path=os_environ['HOME']
 	
-	sync_path=sync_dir+'/'+SYNC_SUBDIR
+	sync_path=os.path.join(sync_dir,SYNC_SUBDIR)
 	os.mkdir(sync_path)
 	
 	for f in json_tree['files']:
 		sync_cp_file(f,start_path,sync_path)
 	
-	os.chdir(sync_path+'/..')
+	os.chdir(os.path.join(sync_path,'..'))
 	
 #	manifest_basename=os.path.basename(manifest)
 	
@@ -108,10 +108,10 @@ def mk_bk(manifest,output_file,sync_dir):
 	#because we need to know what to look for when extracting
 	manifest_basename=MANIFEST_NAME
 	
-	shutil.copyfile(manifest,sync_path+'/../'+manifest_basename)
-	os.system('tar czf '+output_file+' '+manifest_basename+' '+SYNC_SUBDIR+'/')
-	print('removing '+os.getcwd()+'/'+SYNC_SUBDIR+'/ '+manifest_basename)
-	os.system('rm -rf '+SYNC_SUBDIR+'/ '+manifest_basename)
+	shutil.copyfile(manifest,os.path.join(sync_path,'..',manifest_basename))
+	os.system('tar czf '+output_file+' '+manifest_basename+' '+SYNC_SUBDIR+os.sep)
+	print('removing '+os.path.join(os.getcwd(),SYNC_SUBDIR+'')+' '+manifest_basename)
+	os.system('rm -rf '+os.path.join(SYNC_SUBDIR,'')+' '+manifest_basename)
 
 def resolve_bk(src,dest):
 	got_opt=False
@@ -198,7 +198,7 @@ def full_file_list(start_path):
 	
 	acc=[]
 	for f in os.listdir(start_path):
-		fpath=start_path+'/'+f
+		fpath=os.path.join(start_path,f)
 		if(os.path.isdir(fpath)):
 			acc.extend(full_file_list(fpath))
 		else:
@@ -210,7 +210,7 @@ def sync_bk(sync_file,sync_dir):
 	#save the directory this script was run from
 	run_dir=os.getcwd()
 	
-	sync_path=sync_dir+'/'+SYNC_SUBDIR
+	sync_path=os.path.join(sync_dir,SYNC_SUBDIR)
 	if(not os.path.exists(sync_path)):
 		os.mkdir(sync_path)
 	else:
@@ -254,9 +254,9 @@ def sync_bk(sync_file,sync_dir):
 	
 	print('start_path is '+start_path)
 	
-	arc_files=full_file_list(sync_path+'/'+SYNC_SUBDIR)
+	arc_files=full_file_list(os.path.join(sync_path,SYNC_SUBDIR))
 	for idx in range(0,len(arc_files)):
-		arc_files[idx]=arc_files[idx][len(sync_path)+len('/'):]
+		arc_files[idx]=arc_files[idx][len(sync_path)+len(os.sep):]
 		src=arc_files[idx]
 		dest=start_path+arc_files[idx][len(SYNC_SUBDIR):]
 #		print('got archived file at path     ./'+src)
