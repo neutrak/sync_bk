@@ -38,7 +38,7 @@ def cp_file(from_path,to_path,preserve_time=True):
 		shutil.copyfile(from_path,to_path)
 
 def sync_cp_file(f,from_path,to_path):
-	if(f['type']=='dir'):
+	if((f['type']=='dir') or (f['type']=='directory')):
 		if(f['recurse']==True):
 			#copy all files in the directory, etc.
 			shutil.copytree(os.path.join(from_path,f['path']),os.path.join(to_path,f['path']))
@@ -58,7 +58,7 @@ def sync_cp_file(f,from_path,to_path):
 		print('Warn: Unrecognized file type for '+str(f)+'; skipping...')
 
 def sync_add_file(f,output_arc):
-	if(f['type']=='dir'):
+	if((f['type']=='dir') or (f['type']=='directory')):
 		if(f['recurse']==True):
 			#copy all files in the directory, etc.
 			cmd='tar uvf '+output_arc+' --transform \'s%^%sync_bk/%\' '+f['path']
