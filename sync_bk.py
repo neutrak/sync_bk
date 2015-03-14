@@ -221,8 +221,7 @@ def resolve_bk(src,dest):
 			got_opt=True
 		elif(option=='d'):
 			#view diff
-			os.system('diff '+src+' '+dest+' | less')
-			got_opt=True
+			os.system('diff \''+src+'\' \''+dest+'\' | less')
 		elif(option=='m'):
 			#merge
 			#TODO
@@ -304,27 +303,41 @@ def sync_bk(sync_file,sync_dir):
 		arc_files[idx]=arc_files[idx][len(sync_path)+len(os.sep):]
 		src=arc_files[idx]
 		dest=start_path+arc_files[idx][len(SYNC_SUBDIR):]
+		
+		src=src.replace('\'','\\\'')
+		dest=dest.replace('\'','\\\'')
+
 #		print('[debug] got archived file at path     ./'+src)
 #		print('[debug] possible destination          '+dest)
 		
 		#if the destination file does exist
 		if(os.path.isfile(dest)):
-			#check if there are differences using 'diff'
-			command=['diff',src,dest]
-			sub_proc=subprocess.Popen(' '.join(command),stderr=subprocess.STDOUT,stdout=subprocess.PIPE,shell=True)
-			output,error=sub_proc.communicate()
-			output=output.decode('utf-8')
+			print('[debug] operating on file '+dest+' ...')
 			
-			#if so, prompt the user to resolve the differences
-			if(len(output)>0):
-				print('[info] found differences between '+src+' and '+dest+'!')
+			#compare checksums to determine if a file changed
+			if(os.stat(src).st_size==os.stat(dest).st_size):
+#				print('[debug] getting src checksum...')
+				sub_proc=subprocess.Popen('sha1sum \''+src+'\' | awk \'{print $1}\'',stderr=subprocess.STDOUT,stdout=subprocess.PIPE,shell=True)
+				src_sum,src_sum_error=sub_proc.communicate()
+				src_sum=src_sum.decode('utf-8')
 				
-				#resolve conflicts in this case
-				resolve_bk(src,dest)
-			#else just skip it (no differences)
-			else:
-				print('[info] no differences found; skipping '+dest+'...')
-				continue
+#				print('[debug] getting dest checksum...')
+				sub_proc=subprocess.Popen('sha1sum \''+dest+'\' | awk \'{print $1}\'',stderr=subprocess.STDOUT,stdout=subprocess.PIPE,shell=True)
+				dest_sum,dest_sum_error=sub_proc.communicate()
+				dest_sum=dest_sum.decode('utf-8')
+				
+				#no differences; just skip it
+				if(src_sum==dest_sum):
+					print('[info] no differences found; skipping '+dest+'...')
+					continue
+			
+			#there were differences,
+			#so prompt the user to resolve the differences
+			#they can view a diff if desired from resolv_bk
+			print('[info] found differences between '+src+' and '+dest+' !')
+			
+			#resolve conflicts in this case
+			resolve_bk(src,dest)
 		#if the destination file doesn't already exist
 		else:
 			print('[info] destination '+dest+' does not yet exist! (new or moved file?)')
