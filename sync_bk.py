@@ -61,18 +61,18 @@ def sync_add_file(f,output_arc):
 	if((f['type']=='dir') or (f['type']=='directory')):
 		if(f['recurse']==True):
 			#copy all files in the directory, etc.
-			cmd='tar uvf '+output_arc+' --transform \'s%^%sync_bk/%\' '+f['path']
-			print(cmd)
+			cmd='tar uf '+output_arc+' --transform \'s%^%sync_bk/%\' '+f['path']
+#			print('[debug] '+cmd)
 			os.system(cmd)
 		else:
 			for filename in os.listdir(f['path']):
 				if(not os.path.isdir(os.path.join(f['path'],filename))):
-					cmd='tar uvf '+output_arc+' --transform \'s%^%sync_bk/%\' '+os.path.join(f['path'],filename)
-					print(cmd)
+					cmd='tar uf '+output_arc+' --transform \'s%^%sync_bk/%\' '+os.path.join(f['path'],filename)
+#					print('[debug] '+cmd)
 					os.system(cmd)
 	elif(f['type']=='file'):
-		cmd='tar uvf '+output_arc+' --transform \'s%^%sync_bk/%\' '+f['path']
-		print(cmd)
+		cmd='tar uf '+output_arc+' --transform \'s%^%sync_bk/%\' '+f['path']
+#		print('[debug] '+cmd)
 		os.system(cmd)
 	else:
 		print('Warn: Unrecognized file type for '+str(f)+'; skipping...')
@@ -108,7 +108,7 @@ def mk_bk(manifest,output_file,sync_dir):
 		exit(1)
 	
 	for key in json_tree:
-		print('json_tree['+str(key)+']='+str(json_tree[key]))
+		print('[debug] json_tree['+str(key)+']='+str(json_tree[key]))
 	
 	start_path=json_tree['start_path']
 	if(start_path is None):
@@ -118,15 +118,15 @@ def mk_bk(manifest,output_file,sync_dir):
 	try:
 		os.mkdir(sync_path)
 	except FileExistsError:
-		print('Warn: '+sync_path+' already exists; this script might have exited prematurely; remove directory? (y/n)')
+		print('Warn: '+sync_path+' already existed; if this script was previously run without a clean exit you should delete this first')
+		print('Delete? (y/n)')
 		option=(input().lower())[0]
 		print('Got option '+str(option))
+		
 		if(option=='y'):
+			print('[info] removing and re-making '+sync_path+'...')
 			os.system('rm -rf '+sync_path)
 			os.mkdir(sync_path)
-		else:
-			print('Err: couldn\'t create sync directory; exiting...')
-			exit(1)
 	
 	output_tar=output_file
 	if(output_tar.endswith('.gz')):
@@ -134,7 +134,6 @@ def mk_bk(manifest,output_file,sync_dir):
 	
 	os.chdir(start_path)
 	for f in json_tree['files']:
-#		sync_cp_file(f,start_path,sync_path)
 		sync_add_file(f,output_tar)
 	
 	os.chdir(os.path.join(sync_path,'..'))
@@ -146,14 +145,13 @@ def mk_bk(manifest,output_file,sync_dir):
 	manifest_basename=MANIFEST_NAME
 	
 	shutil.copyfile(manifest,os.path.join(sync_path,'..',manifest_basename))
-	os.system('tar czf '+output_file+' '+manifest_basename+' '+SYNC_SUBDIR+os.sep)
 	
-	cmd='tar uvf '+output_tar+' --transform \'s%^%%\' '+manifest_basename
-	print(cmd)
+	cmd='tar uf '+output_tar+' --transform \'s%^%%\' '+manifest_basename
+	print('[debug] '+cmd)
 	os.system(cmd)
 	
 	cmd='gzip '+output_tar
-	print(cmd)
+	print('[debug] '+cmd)
 	os.system(cmd)
 	
 	print('removing '+os.path.join(os.getcwd(),SYNC_SUBDIR+'')+' '+manifest_basename)
@@ -188,53 +186,54 @@ def resolve_bk(src,dest):
 		#do what the option asked
 		if(option=='n'):
 			#keep newest
-			print('keeping newest')
+			print('[info] keeping newest')
 			if(src_info.st_mtime>dest_info.st_mtime):
 				cp_file(src,dest)
 			got_opt=True
 		elif(option=='o'):
 			#keep oldest
-			print('keeping oldest')
+			print('[info] keeping oldest')
 			if(src_info.st_mtime<dest_info.st_mtime):
 				cp_file(src,dest)
 			got_opt=True
 		elif(option=='l'):
 			#keep largest
-			print('keeping largest')
+			print('[info] keeping largest')
 			if(src_info.st_size>dest_info.st_size):
 				#copy from source (archive) to destination
 				cp_file(src,dest)
 			got_opt=True
 		elif(option=='s'):
 			#keep smallest
-			print('keeping smallest')
+			print('[info] keeping smallest')
 			if(src_info.st_size<dest_info.st_size):
 				#copy from source (archive) to destination
 				cp_file(src,dest)
 			got_opt=True
 		elif(option=='a'):
 			#keep archived copy (copy source to dest)
-			print('keeping archived copy')
+			print('[info] keeping archived copy')
 			cp_file(src,dest)
 			got_opt=True
 		elif(option=='f'):
 			#keep filesystem copy (do nothing)
-			print('keeping filesystem copy')
+			print('[info] keeping filesystem copy')
 			got_opt=True
 		elif(option=='d'):
 			#view diff
-			#TODO
+			os.system('diff '+src+' '+dest+' | less')
 			got_opt=True
 		elif(option=='m'):
 			#merge
 			#TODO
+			print('[info] merge not yet supported; skipping...')
 			got_opt=True
 		elif(option=='k'):
 			#skip
-			print('skipping file')
+			print('[info] skipping file')
 			got_opt=True
 		else:
-			print('Unrecognized option, try again')
+			print('Warn: Unrecognized option, try again')
 	
 	#issue should now be resolved
 
@@ -266,11 +265,11 @@ def sync_bk(sync_file,sync_dir):
 		print('Got option '+str(option))
 		
 		if(option=='y'):
-			print('removing and re-making '+sync_path+'...')
+			print('[info] removing and re-making '+sync_path+'...')
 			os.system('rm -rf '+sync_path)
 			os.mkdir(sync_path)
 	
-	print(os.getcwd()+'$ tar xzf -C \''+sync_path+'\' '+sync_file)
+	print('[debug] '+os.getcwd()+'$ tar xzf -C \''+sync_path+'\' '+sync_file)
 	os.system('tar -C \''+sync_path+'\' -xzf '+sync_file)
 	
 	files=os.listdir(sync_path)
@@ -298,15 +297,15 @@ def sync_bk(sync_file,sync_dir):
 	if(start_path is None):
 		start_path=os_environ['HOME']
 	
-	print('start_path is '+start_path)
+	print('[debug] start_path is '+start_path)
 	
 	arc_files=full_file_list(os.path.join(sync_path,SYNC_SUBDIR))
 	for idx in range(0,len(arc_files)):
 		arc_files[idx]=arc_files[idx][len(sync_path)+len(os.sep):]
 		src=arc_files[idx]
 		dest=start_path+arc_files[idx][len(SYNC_SUBDIR):]
-#		print('got archived file at path     ./'+src)
-#		print('possible destination          '+dest)
+#		print('[debug] got archived file at path     ./'+src)
+#		print('[debug] possible destination          '+dest)
 		
 		#if the destination file does exist
 		if(os.path.isfile(dest)):
@@ -318,17 +317,17 @@ def sync_bk(sync_file,sync_dir):
 			
 			#if so, prompt the user to resolve the differences
 			if(len(output)>0):
-				print('found differences between '+src+' and '+dest+'!')
+				print('[info] found differences between '+src+' and '+dest+'!')
 				
 				#resolve conflicts in this case
 				resolve_bk(src,dest)
 			#else just skip it (no differences)
 			else:
-				print('no differences found; skipping '+dest+'...')
+				print('[info] no differences found; skipping '+dest+'...')
 				continue
 		#if the destination file doesn't already exist
 		else:
-			print('destination '+dest+' does not yet exist! (new or moved file?)')
+			print('[info] destination '+dest+' does not yet exist! (new or moved file?)')
 			
 			#TODO: handle moved files gracefully
 			#look for a file with the same name
@@ -336,11 +335,13 @@ def sync_bk(sync_file,sync_dir):
 					#run diff
 					#if there are no differences, prompt to move local file
 					#if there are differences, prompt for directory and what to do
-			#TODO: copy src to the appropriate destination
+			#copy src to the appropriate destination
+			print('[info] copying '+src+' to '+dest)
+			cp_file(src,dest)
 	
 	#clean up backup dir
 	os.chdir(run_dir)
-	print('removing '+sync_path)
+	print('[cleanup] removing '+sync_path)
 	os.system('rm -rf '+sync_path)
 
 #TODO: write this, and provide a cli option to use it
