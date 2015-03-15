@@ -313,6 +313,9 @@ def sync_bk(sync_file,sync_dir):
 		#if the destination file does exist
 		if(os.path.isfile(dest)):
 			print('[debug] operating on file '+dest+' ...')
+			if(not os.path.isfile(src)):
+				print('[info] skipping '+dest+'; source was not a file')
+				continue
 			
 			#compare checksums to determine if a file changed
 			if(os.stat(src).st_size==os.stat(dest).st_size):
