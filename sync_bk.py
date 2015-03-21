@@ -58,20 +58,25 @@ def sync_cp_file(f,from_path,to_path):
 		print('Warn: Unrecognized file type for '+str(f)+'; skipping...')
 
 def sync_add_file(f,output_arc):
+	if(not os.path.exists(f['path'])):
+		print('Warn: Nothing at path \''+f['path']+'\'; IGNORING!!!')
+		return
+	
+	path=f['path'].replace('\'','\\\'')
 	if((f['type']=='dir') or (f['type']=='directory')):
 		if(f['recurse']==True):
 			#copy all files in the directory, etc.
-			cmd='tar uf '+output_arc+' --transform \'s%^%sync_bk/%\' '+f['path']
+			cmd='tar uf '+output_arc+' --transform \'s%^%sync_bk/%\' \''+path+'\''
 #			print('[debug] '+cmd)
 			os.system(cmd)
 		else:
 			for filename in os.listdir(f['path']):
 				if(not os.path.isdir(os.path.join(f['path'],filename))):
-					cmd='tar uf '+output_arc+' --transform \'s%^%sync_bk/%\' '+os.path.join(f['path'],filename)
+					cmd='tar uf '+output_arc+' --transform \'s%^%sync_bk/%\' \''+os.path.join(path,filename.replace('\'','\\\''))+'\''
 #					print('[debug] '+cmd)
 					os.system(cmd)
 	elif(f['type']=='file'):
-		cmd='tar uf '+output_arc+' --transform \'s%^%sync_bk/%\' '+f['path']
+		cmd='tar uf '+output_arc+' --transform \'s%^%sync_bk/%\' \''+path+'\''
 #		print('[debug] '+cmd)
 		os.system(cmd)
 	else:
@@ -368,6 +373,7 @@ def diff_bk():
 if(__name__=='__main__'):
 	parser=optparse.OptionParser()
 	
+	parser.add_option('--verbose',action='store_true',dest='verbose',default=False)
 	parser.add_option('--extract',action='store_true',dest='extract',default=False)
 	parser.add_option('--syncf',action='store',dest='sync_file',default=os.environ['HOME']+'/sync_bk_'+time.strftime('%Y-%m-%d')+'.tar.gz')
 	parser.add_option('--syncd',action='store',dest='sync_dir',default=tempfile.gettempdir())
@@ -375,6 +381,7 @@ if(__name__=='__main__'):
 	
 	options=parser.parse_args(sys.argv[1:])
 	
+	verbose=options[0].verbose
 	extract=options[0].extract
 	sync_file=options[0].sync_file
 	sync_dir=options[0].sync_dir
